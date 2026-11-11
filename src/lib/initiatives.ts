@@ -1,6 +1,8 @@
 import { readdir, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import { initiativesDir } from "./claude/paths";
+import { loadPipeline } from "./claude/pipeline";
+import type { PhaseStep } from "./pipeline-definition";
 import {
   type ListedPullRequest,
   type PullRequest,
@@ -107,6 +109,7 @@ async function loadInitiative(
   key: string,
   tracker: IssueTracker,
   source: PullRequestSource,
+  steps: PhaseStep[],
 ): Promise<Initiative> {
   const registryPath = path.join(initiativesDir, key, "registry.md");
   const markdown = await readFile(registryPath, "utf8").catch(() => "");
@@ -114,7 +117,7 @@ async function loadInitiative(
     .then((info) => info.mtimeMs)
     .catch(() => 0);
   const initiative: Initiative = {
-    ...parseRegistry(key, markdown),
+    ...parseRegistry(key, markdown, steps),
     children: [],
     touchedAt,
   };
@@ -169,9 +172,10 @@ async function loadInitiative(
 export async function listInitiatives(): Promise<Initiative[]> {
   const tracker = issueTracker();
   const source = pullRequestSource();
+  const steps = await loadPipeline();
   const initiatives = await Promise.all(
     (await listRegistryKeys()).map((key) =>
-      loadInitiative(key, tracker, source),
+      loadInitiative(key, tracker, source, steps),
     ),
   );
   return initiatives.sort((a, b) => b.touchedAt - a.touchedAt);

@@ -1,30 +1,9 @@
 import type { AgentInfo, SessionInfo, Snapshot } from "@/lib/claude/types";
 import type { Initiative } from "@/lib/initiatives";
+import type { PhaseStep } from "@/lib/pipeline-definition";
 import { ticketStage } from "./pipeline";
 
-export interface PhaseStep {
-  key: string;
-  label: string;
-  gate: boolean;
-  /** Phase number this step belongs to; a gate sits after the phase it closes. */
-  after: number;
-}
-
-/** The /initiative phases and the gates where the orchestrator stops for you, in order. */
-export const PHASE_STEPS: PhaseStep[] = [
-  { key: "0", label: "Intake", gate: false, after: 0 },
-  { key: "1", label: "Plan", gate: false, after: 1 },
-  { key: "2", label: "Plan review", gate: false, after: 2 },
-  { key: "gate-a", label: "Gate A · plan", gate: true, after: 2.5 },
-  { key: "3", label: "Breakdown", gate: false, after: 3 },
-  { key: "4", label: "UI preview", gate: false, after: 4 },
-  { key: "gate-ui", label: "Gate UI", gate: true, after: 4.3 },
-  { key: "gate-b", label: "Gate B · start dev", gate: true, after: 4.6 },
-  { key: "5", label: "Build", gate: false, after: 5 },
-  { key: "6", label: "Review", gate: false, after: 6 },
-  { key: "7", label: "Watch", gate: false, after: 7 },
-  { key: "8", label: "Close", gate: false, after: 8 },
-];
+export type { PhaseStep };
 
 export type StepState = "done" | "current" | "upcoming" | "skipped";
 

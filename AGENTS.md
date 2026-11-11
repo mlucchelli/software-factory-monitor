@@ -23,5 +23,8 @@ Read-only monitor over local Claude Code state, with two write paths into a tmux
 - Environment is read only in `src/lib/config.ts`. Add a setting there and to `.env.example`, never as a `process.env` read elsewhere.
 - Issues come through `IssueTracker` (`src/lib/trackers/`, Linear implemented) and pull requests through `PullRequestSource` (`src/lib/pull-requests/`, GitHub via `gh`). Components import neither; they see `Initiative` from `src/lib/initiatives.ts`.
 - `pnpm demo` generates a Claude home under `.demo/` from `scripts/demo/scenario.mjs`. When a parser starts reading a new transcript field, add it to `scripts/demo/records.mjs` and to `scripts/demo/scenario.test.ts`, which reads the demo back through the real readers.
+- The pipeline is data: `src/lib/pipeline-definition.ts` parses phases and gates from the skill and components take `steps` from `useMonitorData()`. Do not hardcode a phase list; if the skill in `team/` changes shape, update `DEFAULT_STEPS` until `pipeline-definition.test.ts` passes.
+- `pnpm test:e2e` runs the Playwright smoke tests in `e2e/` against the demo. A new page gets a test there.
+- Charts use the role palette in its fixed order (`inPaletteOrder` in `client/costs.ts`): a role keeps its color whatever its rank, and text stays in ink tokens.
 - `team/` holds the role prompts and the `/initiative` skill the monitor displays. The monitor parses their report fields, `MODE:` lines, phase numbers and gate names; change those in both places.
-- Checks before finishing: `pnpm lint && pnpm typecheck && pnpm test && pnpm build`.
+- Checks before finishing: `pnpm lint && pnpm typecheck && pnpm test && pnpm build`, and `pnpm test:e2e` when a page changed.

@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { AgentInfo } from "@/lib/claude/types";
 import type { PullRequest, TrackerIssue } from "@/lib/initiatives";
-import { isActive, isRetired, PHASE_STEPS, stepState } from "./mission";
+import { DEFAULT_STEPS } from "@/lib/pipeline-definition";
+import { isActive, isRetired, stepState } from "./mission";
 import { ticketStage } from "./pipeline";
 
 const NOW = Date.parse("2026-03-10T12:00:00Z");
@@ -118,7 +119,7 @@ describe("ticketStage", () => {
 
 describe("stepState", () => {
   const step = (key: string) => {
-    const found = PHASE_STEPS.find((candidate) => candidate.key === key);
+    const found = DEFAULT_STEPS.find((candidate) => candidate.key === key);
     if (!found) {
       throw new Error(key);
     }

@@ -6,6 +6,7 @@ import {
   ArchiveRestore,
   ChevronRight,
   CircleAlert,
+  CircleDollarSign,
   Loader2,
   type LucideIcon,
   MessagesSquare,
@@ -27,7 +28,7 @@ import {
 } from "@/lib/client/archive";
 import {
   type Crew,
-  PHASE_STEPS,
+  type PhaseStep,
   type StepState,
   stepState,
 } from "@/lib/client/mission";
@@ -47,6 +48,7 @@ const LINKS: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/", label: "Mission control", icon: Workflow },
   { href: "/live", label: "All sessions", icon: Activity },
   { href: "/initiatives", label: "Initiatives", icon: Rows3 },
+  { href: "/costs", label: "Costs", icon: CircleDollarSign },
 ];
 
 function isLinkActive(href: string, pathname: string): boolean {
@@ -118,14 +120,14 @@ const SEGMENT_COLOR: Record<StepState, string> = {
   skipped: "transparent",
 };
 
-function PhaseTicks({ crew }: { crew: Crew }) {
+function PhaseTicks({ crew, steps }: { crew: Crew; steps: PhaseStep[] }) {
   const initiative = crew.initiative;
   if (!initiative) {
     return null;
   }
   return (
     <span className="flex h-1 flex-1 items-center gap-px" aria-hidden>
-      {PHASE_STEPS.map((step) => {
+      {steps.map((step) => {
         const state = stepState(
           step,
           initiative.phaseNumber,
@@ -150,12 +152,12 @@ function PhaseTicks({ crew }: { crew: Crew }) {
   );
 }
 
-function phaseLabel(crew: Crew): string {
+function phaseLabel(crew: Crew, steps: PhaseStep[]): string {
   const initiative = crew.initiative;
   if (!initiative) {
     return "";
   }
-  const current = PHASE_STEPS.filter(
+  const current = steps.filter(
     (step) =>
       stepState(step, initiative.phaseNumber, initiative.previews) ===
       "current",
@@ -221,11 +223,12 @@ function CrewRow({
   /** Present when the row can be archived or unarchived by hand. */
   onArchiveByHand?: (archive: boolean) => void;
 }) {
+  const { steps } = useMonitorData();
   const subtitle = crew.subtitle ?? "No orchestrator session found";
   const meta = archived
     ? ARCHIVE_LABEL[archived]
     : crew.initiative
-      ? phaseLabel(crew)
+      ? phaseLabel(crew, steps)
       : `${crew.session?.agents.length ?? 0} agents${
           lastActivity ? ` · ${formatAgo(lastActivity, now)}` : ""
         }`;
@@ -280,7 +283,7 @@ function CrewRow({
                 </span>
               </span>
               <span className="flex min-w-0 items-center gap-2 text-[11px] text-muted">
-                <PhaseTicks crew={crew} />
+                <PhaseTicks crew={crew} steps={steps} />
                 <span
                   className="shrink-0 truncate"
                   title={archived ? ARCHIVE_EXPLANATION[archived] : undefined}
@@ -523,6 +526,7 @@ export function CrewRail({
     launches,
     dismissLaunch,
     openLauncher,
+    steps,
   } = useMonitorData();
   const inSnapshot = new Set(snapshot?.sessions.map((session) => session.id));
   const starting = launches.filter(
@@ -556,7 +560,7 @@ export function CrewRail({
       crewRuns(crew, crews).filter((agent) => agent.status === "running")
         .length;
     const initiative = crew.initiative;
-    const pausedAtGate = PHASE_STEPS.some(
+    const pausedAtGate = steps.some(
       (step) =>
         step.gate &&
         stepState(step, initiative?.phaseNumber, initiative?.previews) ===

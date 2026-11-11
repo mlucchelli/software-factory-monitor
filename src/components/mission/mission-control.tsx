@@ -196,7 +196,7 @@ function TopBar({
  * questions are history, not something waiting on you.
  */
 function CrewView({ crew, openChat }: { crew: Crew; openChat: boolean }) {
-  const { snapshot, now, crews, archived, setArchivedByHand } =
+  const { snapshot, now, crews, steps, archived, setArchivedByHand } =
     useMonitorData();
   const archive = archived.get(crew.key);
   const session = archive ? undefined : crew.session;
@@ -229,12 +229,13 @@ function CrewView({ crew, openChat }: { crew: Crew; openChat: boolean }) {
     [attention],
   );
   const stages = useMemo(
-    () => buildWorkflow(crew.initiative, agents, now, waitingIds),
-    [crew.initiative, agents, now, waitingIds],
+    () => buildWorkflow(crew.initiative, agents, now, waitingIds, steps),
+    [crew.initiative, agents, now, waitingIds, steps],
   );
   const team = useMemo(
-    () => buildTeam(agents, waitingIds, now, crew.initiative?.phaseNumber),
-    [agents, waitingIds, now, crew.initiative?.phaseNumber],
+    () =>
+      buildTeam(agents, waitingIds, now, steps, crew.initiative?.phaseNumber),
+    [agents, waitingIds, now, steps, crew.initiative?.phaseNumber],
   );
   const tickets = useMemo(
     () => stages.flatMap((stage) => stage.tickets),

@@ -2,12 +2,10 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { Initiative } from "@/lib/initiatives";
-import { PHASE_STEPS } from "./mission";
+import { closePhase, type PhaseStep } from "@/lib/pipeline-definition";
 
 /** Why an initiative left the active list, most authoritative first. */
 export type ArchiveReason = "closed" | "done" | "canceled" | "manual";
-
-const CLOSE_PHASE = PHASE_STEPS[PHASE_STEPS.length - 1].after;
 
 export const ARCHIVE_LABEL: Record<ArchiveReason, string> = {
   closed: "Closed",
@@ -30,10 +28,11 @@ export const ARCHIVE_EXPLANATION: Record<ArchiveReason, string> = {
  */
 export function finishedReason(
   initiative: Initiative,
+  steps: PhaseStep[],
 ): Exclude<ArchiveReason, "manual"> | undefined {
   if (
     initiative.phaseNumber !== undefined &&
-    initiative.phaseNumber >= CLOSE_PHASE
+    initiative.phaseNumber >= closePhase(steps)
   ) {
     return "closed";
   }
@@ -50,12 +49,13 @@ export function finishedReason(
 export function archiveReason(
   initiative: Initiative | undefined,
   archivedByHand: ReadonlySet<string>,
+  steps: PhaseStep[],
 ): ArchiveReason | undefined {
   if (!initiative) {
     return undefined;
   }
   return (
-    finishedReason(initiative) ??
+    finishedReason(initiative, steps) ??
     (archivedByHand.has(initiative.key) ? "manual" : undefined)
   );
 }

@@ -7,7 +7,7 @@ It answers three questions at a glance: where is each initiative, who is working
 Everything is read from the files Claude Code already writes under `~/.claude`.
 There is no database, no hooks and no agent-side setup: start the server and the sessions that are already running show up.
 
-![Mission control: the pipeline, the agent team and what waits on you](docs/mission-control.png)
+![Mission control with two agents working and the last messages replayed on the edges](docs/demo.gif)
 
 ## Demo
 
@@ -19,7 +19,7 @@ pnpm demo                    # http://127.0.0.1:4310
 `pnpm demo` needs no Claude Code session, no Linear key and no GitHub login.
 It generates a Claude home under `.demo/` for a fictional team: one initiative in the build phase with two runs working, one paused at a gate with a question open, one finished, and a plain session.
 A ticker keeps appending tool calls to the live runs, so the graph, the feed and the costs move.
-The screenshots in this README are taken from it.
+The recording above and the screenshots in this README are taken from it.
 
 The data is written in the same format Claude Code uses and read by the same code as real data; only the issues and pull requests come from JSON files instead of Linear and GitHub.
 
@@ -102,7 +102,10 @@ The monitor depends on a few things those prompts make the agents write, so keep
 | Mission control | `/` | One crew at a time: its pipeline, its agent team as a live hierarchy, its tickets, and what waits on you |
 | All sessions | `/live` | Every session and sub-agent on the machine: swim lanes of the last 10 minutes, an activity pulse by role, the parent → sub-agent tree and a filterable live feed |
 | Initiatives | `/initiatives` | Each initiative registry with its phase and orchestrator log, its sub-issues as a board, their pull requests, and the agents on each ticket |
+| Costs | `/costs` | What each initiative and each role spent: a bar per initiative split by role on one shared scale, with a table by role and by ticket |
 | Agent | `/agents/<id>` | One agent's report, launch prompt and live stream: tool calls with results, Edit/Write diffs, messages. Thinking is never shown |
+
+![Mission control: the pipeline, the agent team and what waits on you](docs/mission-control.png)
 
 ### Mission control
 
@@ -181,6 +184,8 @@ All motion is disabled under `prefers-reduced-motion`.
 
 ![Initiatives: what needs you, the orchestrator and the agents per ticket](docs/initiatives.png)
 
+![Costs by role and by ticket](docs/costs.png)
+
 ## Architecture
 
 ### Reading Claude Code's files
@@ -197,6 +202,10 @@ Transcripts reach hundreds of MB, so a file is only read from its head or its ta
 Token usage is folded forward from the last byte offset, so each byte is parsed once.
 Live updates are server-sent events fed by polling file sizes every 1.5 seconds.
 Costs are estimated from transcript token usage at list prices, not billed amounts.
+
+The pipeline itself is not written in the monitor.
+The phases and gates are parsed from the installed skill's `SKILL.md` (`## Phase N — name` headings and the lines that open with `Gate X`), so a phase or a gate added to the skill appears on the pipeline, in the rail and in the registry parser without a code change.
+When no skill is installed the pipeline of the skill in `team/` is used, and a test keeps the two equal.
 
 An agent is running when its transcript changed in the last 45 seconds, reported when its latest hand-back came after its latest prompt, and idle otherwise.
 
@@ -245,9 +254,9 @@ In demo mode `POST /api/sessions` answers 403, and the other two actions have no
 | Issues | Linear GraphQL API |
 | Pull requests | GitHub via the `gh` CLI |
 | Terminal actions | tmux (`capture-pane`, `send-keys`, `new-session`) |
-| Tests | Vitest |
+| Tests | Vitest, Playwright |
 | Lint and format | Biome |
-| CI | GitHub Actions: lint, typecheck, tests, build |
+| CI | GitHub Actions: lint, typecheck, unit tests, build, and smoke tests over the demo |
 
 ## Project structure
 
@@ -258,19 +267,21 @@ src/
     shell/                — app shell, left rail, shared data provider, launch dialog
     mission/              — pipeline track, team graph, details panel, tickets, attention band
     chat/                 — transcript as a conversation, composer
-    live/, initiatives/, agent/, stream/ — the other views
+    live/, initiatives/, costs/, agent/, stream/ — the other views
   lib/
     config.ts             — every environment variable the server reads
     claude/               — server-only readers over ~/.claude: transcripts, sessions, roster, usage, tmux, launch
     trackers/             — IssueTracker interface, Linear, demo
     pull-requests/        — PullRequestSource interface, GitHub, demo
+    pipeline-definition.ts — phases and gates, parsed from the skill
     registry.ts           — parser of an initiative registry
     initiatives.ts        — joins registries, issues and pull requests
-    client/               — derived view models: pipeline, team hierarchy, attention items
+    client/               — derived view models: pipeline, team hierarchy, attention items, costs
 scripts/
   demo.mjs                — `pnpm demo`: generates the data, starts Next, keeps the live runs moving
   demo/scenario.mjs       — the fictional team and its initiatives
   demo/records.mjs        — builders for transcript lines
+e2e/                      — Playwright smoke tests that run against `pnpm demo`
 team/
   agents/                 — the six role prompts
   skills/initiative/      — the orchestrator skill, its stack file and scripts
@@ -317,5 +328,12 @@ For real data: Claude Code with at least one session on the machine.
    pnpm lint && pnpm typecheck && pnpm test && pnpm build
    ```
 
-   The tests cover the transcript parser, the registry parser, the ticket pipeline, the launch command and the request guard.
+   The unit tests cover the transcript parser, the registry and pipeline parsers, the ticket pipeline, the cost model, the launch command and the request guard.
    One of them writes the demo data to a temporary folder and reads it back through the real readers.
+
+5. Run the smoke tests. They build the app, start it in demo mode on port 4399 and open every view in a browser.
+
+   ```bash
+   pnpm exec playwright install chromium   # once
+   pnpm test:e2e
+   ```

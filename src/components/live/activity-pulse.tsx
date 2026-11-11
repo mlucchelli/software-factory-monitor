@@ -81,6 +81,9 @@ export function ActivityPulse({
             <button
               key={bucketStart}
               type="button"
+              // The label is a clock reading: the server's render is a few
+              // seconds older than the browser's first one, by design.
+              suppressHydrationWarning
               aria-label={`${total} events at ${formatClock(new Date(bucketStart).toISOString())}`}
               className="group relative flex h-full flex-1 flex-col-reverse gap-[2px] focus:outline-none"
             >

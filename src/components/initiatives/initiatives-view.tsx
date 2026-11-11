@@ -32,10 +32,10 @@ export function InitiativesView() {
   const now = useNow(5000);
   const [mode, setMode] = useState<ViewMode>("tree");
   const byTicket = agentsByTicket(snapshot);
-  const { openLauncher, archived } = useMonitorData();
+  const { openLauncher, archived, steps } = useMonitorData();
   const archivedGroup = useRememberedOpen(ARCHIVED_OPEN_KEY);
   const reasonOf = (initiative: Initiative): ArchiveReason | undefined =>
-    archived.get(initiative.key) ?? finishedReason(initiative);
+    archived.get(initiative.key) ?? finishedReason(initiative, steps);
   const active = initiatives?.filter((initiative) => !reasonOf(initiative));
   const archivedInitiatives = initiatives?.filter((initiative) =>
     reasonOf(initiative),

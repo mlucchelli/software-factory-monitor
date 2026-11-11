@@ -3,7 +3,7 @@ import {
   DELIVERY_ROLES,
   isActive,
   isRetired,
-  PHASE_STEPS,
+  type PhaseStep,
   PLANNING_ROLES,
   TEAM_ROLES,
 } from "./mission";
@@ -99,8 +99,8 @@ export interface Team {
 
 const MAX_SHOWN = 3;
 
-function stageLabelOf(key: string): string {
-  return PHASE_STEPS.find((step) => step.key === key)?.label ?? key;
+function stageLabelOf(key: string, steps: PhaseStep[]): string {
+  return steps.find((step) => step.key === key)?.label ?? key;
 }
 
 /**
@@ -111,6 +111,7 @@ export function buildTeam(
   agents: AgentInfo[],
   waitingIds: Set<string>,
   now: number,
+  steps: PhaseStep[],
   phase?: number,
 ): Team {
   const byId = new Map(agents.map((agent) => [agent.id, agent]));
@@ -125,12 +126,12 @@ export function buildTeam(
   }
 
   const toRun = (agent: AgentInfo): TeamRun => {
-    const stageKey = agentStageKey(agent, phase);
+    const stageKey = agentStageKey(agent, steps, phase);
     return {
       agent,
       state: runState(agent, waitingIds, now),
       stageKey,
-      stageLabel: stageLabelOf(stageKey),
+      stageLabel: stageLabelOf(stageKey, steps),
       helpers: (childrenOf.get(agent.id) ?? [])
         .filter((helper) => isActive(helper, now) || waitingIds.has(helper.id))
         .map(toRun),

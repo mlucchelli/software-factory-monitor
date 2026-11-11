@@ -21,6 +21,7 @@ import { useNow, usePolling, useSnapshot } from "@/lib/client/hooks";
 import { type Crew, listCrews } from "@/lib/client/mission";
 import { initiativeRuns } from "@/lib/client/workflow";
 import type { Initiative } from "@/lib/initiatives";
+import { DEFAULT_STEPS, type PhaseStep } from "@/lib/pipeline-definition";
 import { LaunchDialog } from "./launch-dialog";
 import { type Launch, type LaunchKind, useLaunchStore } from "./launch-store";
 
@@ -31,6 +32,8 @@ interface MonitorData {
   /** Initiatives come from Linear and GitHub, seconds after the snapshot. */
   initiativesLoaded: boolean;
   crews: Crew[];
+  /** The /initiative pipeline, parsed from the installed skill. */
+  steps: PhaseStep[];
   /** Initiative crews that left the active list, by crew key. */
   archived: ReadonlyMap<string, ArchiveReason>;
   setArchivedByHand: (key: string, archived: boolean) => void;
@@ -76,6 +79,8 @@ export function MonitorDataProvider({ children }: { children: ReactNode }) {
   const { data: initiatives, error: initiativesError } = usePolling<
     Initiative[]
   >("/api/initiatives", 30_000);
+  const { data: pipeline } = usePolling<PhaseStep[]>("/api/pipeline", 300_000);
+  const steps = pipeline ?? DEFAULT_STEPS;
   const now = useNow();
   const router = useRouter();
   const { launches, addLaunch, dismissLaunch } = useLaunchStore();
@@ -89,13 +94,13 @@ export function MonitorDataProvider({ children }: { children: ReactNode }) {
   const archived = useMemo(() => {
     const reasons = new Map<string, ArchiveReason>();
     for (const crew of crews) {
-      const reason = archiveReason(crew.initiative, archivedByHand);
+      const reason = archiveReason(crew.initiative, archivedByHand, steps);
       if (reason) {
         reasons.set(crew.key, reason);
       }
     }
     return reasons;
-  }, [crews, archivedByHand]);
+  }, [crews, archivedByHand, steps]);
   const followed = useRef(new Set<string>());
   const [follow, setFollow] = useState<string | null>(null);
 
@@ -120,6 +125,7 @@ export function MonitorDataProvider({ children }: { children: ReactNode }) {
       initiatives: initiatives ?? [],
       initiativesLoaded: initiatives !== null || initiativesError !== null,
       crews,
+      steps,
       archived,
       setArchivedByHand,
       now,
@@ -133,6 +139,7 @@ export function MonitorDataProvider({ children }: { children: ReactNode }) {
       initiatives,
       initiativesError,
       crews,
+      steps,
       archived,
       setArchivedByHand,
       now,

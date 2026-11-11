@@ -2,7 +2,6 @@ import type { AgentInfo } from "@/lib/claude/types";
 import type { Initiative, TrackerIssue } from "@/lib/initiatives";
 import {
   isRetired,
-  PHASE_STEPS,
   type PhaseStep,
   type StepState,
   stepState,
@@ -58,19 +57,23 @@ const DEFAULT_STAGE: Record<string, string> = {
 };
 
 /** The stage whose work the current phase is doing, for runs that follow the pipeline around. */
-function currentStageKey(phase?: number): string {
+function currentStageKey(steps: PhaseStep[], phase?: number): string {
   if (phase === undefined) {
     return "0";
   }
-  const current = [...PHASE_STEPS]
+  const current = [...steps]
     .reverse()
     .find((step) => !step.gate && step.after <= phase);
   return current?.key ?? "0";
 }
 
-export function agentStageKey(agent: AgentInfo, phase?: number): string {
+export function agentStageKey(
+  agent: AgentInfo,
+  steps: PhaseStep[],
+  phase?: number,
+): string {
   if (agent.type === "initiative-manager" && agent.mode === "status") {
-    return currentStageKey(phase);
+    return currentStageKey(steps, phase);
   }
   const byMode = STAGE_BY_MODE[`${agent.type}:${agent.mode}`];
   if (byMode) {
@@ -79,7 +82,7 @@ export function agentStageKey(agent: AgentInfo, phase?: number): string {
   if (agent.type.endsWith("-developer")) {
     return STAGE_BY_DEVELOPER_MODE[agent.mode ?? ""] ?? BUILD;
   }
-  return DEFAULT_STAGE[agent.type] ?? currentStageKey(phase);
+  return DEFAULT_STAGE[agent.type] ?? currentStageKey(steps, phase);
 }
 
 function ticketStageKey(stage: TicketStage, phase?: number): string {
@@ -111,6 +114,7 @@ export function buildWorkflow(
   agents: AgentInfo[],
   now: number,
   waitingIds: Set<string>,
+  steps: PhaseStep[],
 ): WorkflowStage[] {
   const phase = initiative?.phaseNumber;
   const byStage = new Map<string, Map<string, AgentInfo[]>>();
@@ -118,7 +122,7 @@ export function buildWorkflow(
     if (!TEAM_ROLES.has(agent.type) || isRetired(agent, now)) {
       continue;
     }
-    const key = agentStageKey(agent, phase);
+    const key = agentStageKey(agent, steps, phase);
     const groups = byStage.get(key) ?? new Map<string, AgentInfo[]>();
     groups.set(agent.type, [...(groups.get(agent.type) ?? []), agent]);
     byStage.set(key, groups);
@@ -140,7 +144,7 @@ export function buildWorkflow(
     ]);
   }
 
-  return PHASE_STEPS.map((step) => {
+  return steps.map((step) => {
     const state = stepState(step, phase, initiative?.previews);
     const groups: AgentGroup[] = [
       ...(byStage.get(step.key)?.entries() ?? []),

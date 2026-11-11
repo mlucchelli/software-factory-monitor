@@ -41,6 +41,10 @@ for (const [file, at] of Object.entries(scenario.mtimes)) {
 cpSync(path.join(root, "team", "agents"), path.join(home, "agents"), {
   recursive: true,
 });
+// So is the pipeline: the monitor parses its phases and gates from the skill.
+cpSync(path.join(root, "team", "skills"), path.join(home, "skills"), {
+  recursive: true,
+});
 mkdirSync(path.join(home, "repos"), { recursive: true });
 
 const next = spawn(
