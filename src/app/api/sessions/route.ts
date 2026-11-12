@@ -27,7 +27,7 @@ export async function GET() {
 }
 
 /**
- * The third write path: starts `claude` in a new tmux session. `preview: true`
+ * The third write path: starts `claude` in a new tmux session or Orca terminal. `preview: true`
  * returns the exact command without running anything, for the confirmation.
  */
 export async function POST(request: Request) {
@@ -67,7 +67,8 @@ export async function POST(request: Request) {
   const shown = {
     cwd: plan.cwd,
     command: plan.command,
-    tmuxName: plan.tmuxName,
+    launchName: plan.launchName,
+    host: plan.host,
     suffix: plan.suffix,
   };
   if (preview) {

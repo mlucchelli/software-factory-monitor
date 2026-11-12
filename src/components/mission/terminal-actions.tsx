@@ -8,6 +8,7 @@ import type {
   ScreenPromptOption,
 } from "@/lib/claude/types";
 import { TONE_COLOR } from "@/lib/client/present";
+import { terminalLabel } from "@/lib/terminal/ref";
 
 interface TerminalState {
   live?: LiveProcess;
@@ -250,7 +251,9 @@ export function AnswerDialog({
   const [error, setError] = useState<string | null>(null);
   const [answeredOnce, setAnsweredOnce] = useState(false);
   const prompt = terminal.prompt ?? undefined;
-  const pane = terminal.live?.tmuxPane;
+  const pane = terminal.live?.terminal
+    ? terminalLabel(terminal.live.terminal)
+    : undefined;
   const formKey = `${prompt?.question ?? ""}|${prompt?.tabs?.join() ?? ""}|${prompt?.options.map((option) => `${option.number}${option.checked ? "x" : ""}`).join()}`;
 
   const send = async () => {
@@ -319,7 +322,7 @@ export function AnswerDialog({
             text={terminal.screen}
             caption={
               pane
-                ? `Live terminal · ${terminal.live?.name ?? ""} · tmux ${pane}`
+                ? `Live terminal · ${terminal.live?.name ?? ""} · ${pane}`
                 : "Terminal"
             }
           />
@@ -338,7 +341,7 @@ export function AnswerDialog({
           {pending ? (
             <>
               <span className="mr-auto text-sm text-ink-secondary">
-                Will {pending.summary} in tmux {pane}
+                Will {pending.summary} in {pane}
               </span>
               <button
                 type="button"

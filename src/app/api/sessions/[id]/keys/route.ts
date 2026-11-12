@@ -1,5 +1,5 @@
 import {
-  capturePane,
+  captureTerminal,
   type KeyAction,
   parseScreenPrompt,
   sendAction,
@@ -33,13 +33,13 @@ export async function POST(
   }
 
   const state = await getSessionState(id);
-  const pane = state?.live?.tmuxPane;
+  const pane = state?.live?.terminal;
   if (!pane) {
-    return fail("The session is not running in a tmux pane", 409);
+    return fail("The session is not in a terminal the monitor can reach", 409);
   }
 
   try {
-    const prompt = parseScreenPrompt(await capturePane(pane));
+    const prompt = parseScreenPrompt(await captureTerminal(pane));
     if (!prompt) {
       return fail("No question is on the terminal screen anymore", 409);
     }
@@ -51,7 +51,7 @@ export async function POST(
     }
     await sendAction(pane, prompt, body.action);
     await new Promise((resolve) => setTimeout(resolve, SETTLE_MS));
-    const screen = await capturePane(pane);
+    const screen = await captureTerminal(pane);
     return Response.json({ screen, prompt: parseScreenPrompt(screen) ?? null });
   } catch (error) {
     return fail(error instanceof Error ? error.message : String(error), 400);

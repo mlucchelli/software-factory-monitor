@@ -59,7 +59,7 @@ describe("the command", () => {
   it("passes the prompt as one argv element, whatever it contains", () => {
     const prompt = `/initiative it's "urgent"; $(reboot) && echo`;
     const argv = launchArgv({
-      tmuxName: "am-x-0000",
+      launchName: "am-x-0000",
       cwd: "/repos",
       claudeBin: "/bin/claude",
       prompt,
