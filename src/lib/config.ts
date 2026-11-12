@@ -27,6 +27,26 @@ export const claudeBin =
   process.env.AGENTS_MONITOR_CLAUDE ||
   path.join(os.homedir(), ".local", "bin", "claude");
 
+/**
+ * Where a launch starts its session: a detached tmux session (the default) or
+ * a terminal in the Orca running on this machine. Sessions that already run
+ * are found in either, whatever this says.
+ */
+export const launchHost: "tmux" | "orca" =
+  process.env.AGENTS_MONITOR_TERMINAL === "orca" ? "orca" : "tmux";
+
+/** The `orca` binary. On Linux outside Orca the CLI is `orca-ide`. */
+export const orcaBin = process.env.ORCA_BIN || "orca";
+
+/**
+ * Hosts, besides localhost, the pages may be served from and still type into
+ * terminals: the name you open the monitor with when it runs on another
+ * machine ("mini.tailnet.ts.net,mini:4310"). Empty means local only.
+ */
+export const allowedHosts = list(process.env.AGENTS_MONITOR_ALLOWED_HOSTS).map(
+  (host) => host.toLowerCase(),
+);
+
 /** GitHub user or organisation whose repositories hold the pull requests. */
 export const githubOwner = process.env.GITHUB_OWNER || undefined;
 

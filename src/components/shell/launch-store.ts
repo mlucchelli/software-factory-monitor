@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 export type LaunchKind = "session" | "initiative";
 
 export interface Launch {
-  tmuxName: string;
+  launchName: string;
   kind: LaunchKind;
   /** What the rail shows while it starts: the repo, or the initiative argument. */
   label: string;
@@ -56,15 +56,17 @@ export function useLaunchStore() {
   const addLaunch = useCallback(
     (launch: Launch) =>
       update((current) => [
-        ...current.filter((item) => item.tmuxName !== launch.tmuxName),
+        ...current.filter((item) => item.launchName !== launch.launchName),
         launch,
       ]),
     [update],
   );
 
   const dismissLaunch = useCallback(
-    (tmuxName: string) =>
-      update((current) => current.filter((item) => item.tmuxName !== tmuxName)),
+    (launchName: string) =>
+      update((current) =>
+        current.filter((item) => item.launchName !== launchName),
+      ),
     [update],
   );
 
@@ -81,7 +83,7 @@ export function useLaunchStore() {
       }).catch(() => null);
       const body = response?.ok
         ? ((await response.json()) as {
-            launch?: { tmuxName: string; sessionId?: string } | null;
+            launch?: { launchName: string; sessionId?: string } | null;
           })
         : null;
       update((current) =>
@@ -90,7 +92,7 @@ export function useLaunchStore() {
             return launch;
           }
           if (
-            body?.launch?.tmuxName === launch.tmuxName &&
+            body?.launch?.launchName === launch.launchName &&
             body.launch.sessionId
           ) {
             return { ...launch, sessionId: body.launch.sessionId };
@@ -99,7 +101,7 @@ export function useLaunchStore() {
             ? {
                 ...launch,
                 failed:
-                  "No session appeared in 35s. Check its tmux session; the trust prompt may be waiting.",
+                  "No session appeared in 35s. Check its terminal; the trust prompt may be waiting.",
               }
             : launch;
         }),

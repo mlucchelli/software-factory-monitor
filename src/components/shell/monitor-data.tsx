@@ -40,7 +40,7 @@ interface MonitorData {
   now: number;
   /** Sessions started from this browser, newest last. */
   launches: Launch[];
-  dismissLaunch: (tmuxName: string) => void;
+  dismissLaunch: (launchName: string) => void;
   openLauncher: (kind: LaunchKind) => void;
 }
 
@@ -105,7 +105,7 @@ export function MonitorDataProvider({ children }: { children: ReactNode }) {
   const [follow, setFollow] = useState<string | null>(null);
 
   useEffect(() => {
-    const launch = launches.find((item) => item.tmuxName === follow);
+    const launch = launches.find((item) => item.launchName === follow);
     const id = launch?.sessionId;
     if (
       !id ||
@@ -156,7 +156,7 @@ export function MonitorDataProvider({ children }: { children: ReactNode }) {
           onClose={() => setLauncher(null)}
           onLaunched={(launch) => {
             addLaunch(launch);
-            setFollow(launch.tmuxName);
+            setFollow(launch.launchName);
           }}
         />
       )}
