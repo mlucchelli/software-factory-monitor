@@ -42,8 +42,42 @@ test.describe("mission control", () => {
 
   test("opens the orchestrator as a chat", async ({ page }) => {
     await page.goto("/?crew=ENG-412&chat=1");
-    await expect(page.getByText("STATUS: NEEDS_INPUT").first()).toBeVisible();
     await expect(page.getByPlaceholder("Read-only")).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Send" })).toHaveCount(0);
+  });
+
+  test("lays a hand-back out by field instead of as raw text", async ({
+    page,
+  }) => {
+    await page.goto("/?crew=ENG-412&chat=1");
+    const card = page
+      .getByTestId("report-card")
+      .filter({ hasText: "top three as chips" })
+      .first();
+    await expect(card).toBeVisible();
+    await expect(card.getByText("Question", { exact: true })).toBeVisible();
+    // The raw block stays one click away, folded.
+    await expect(card.getByText("STATUS: NEEDS_INPUT")).toBeHidden();
+    await expect(
+      page
+        .getByTestId("report-card")
+        .getByRole("link", { name: /#88/ })
+        .first(),
+    ).toBeVisible();
+  });
+
+  test("keeps every seat on one row when the chat narrows the graph", async ({
+    page,
+  }) => {
+    await page.goto("/?crew=ENG-412&chat=1");
+    await expect(page.locator('[data-node="seat:tech-lead"]')).toBeVisible();
+    // Layout position, not the painted one: seats rise in with a transform.
+    const tops = await page
+      .locator('[data-node^="seat:"]')
+      .evaluateAll((seats) => [
+        ...new Set(seats.map((seat) => (seat as HTMLElement).offsetTop)),
+      ]);
+    expect(tops).toHaveLength(1);
   });
 });
 

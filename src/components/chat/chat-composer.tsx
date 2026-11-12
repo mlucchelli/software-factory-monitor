@@ -115,15 +115,17 @@ export function ChatComposer({
             aria-describedby="composer-hint"
             className="max-h-[220px] min-h-6 flex-1 resize-none bg-transparent text-sm leading-6 text-ink outline-none placeholder:text-muted disabled:cursor-not-allowed"
           />
-          <button
-            type="submit"
-            disabled={!canSend}
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-ink px-2.5 py-1 text-xs font-medium text-page transition-opacity disabled:opacity-30"
-            aria-label="Send"
-          >
-            <Send className="size-3.5" aria-hidden />
-            {sending ? "Sending" : "Send"}
-          </button>
+          {live?.tmuxPane && (
+            <button
+              type="submit"
+              disabled={!canSend}
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-ink px-2.5 py-1 text-xs font-medium text-page transition-opacity disabled:opacity-30"
+              aria-label="Send"
+            >
+              <Send className="size-3.5" aria-hidden />
+              {sending ? "Sending" : "Send"}
+            </button>
+          )}
         </div>
         <p id="composer-hint" className="text-[10px] text-muted">
           {reason ??

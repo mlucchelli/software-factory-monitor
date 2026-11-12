@@ -44,6 +44,8 @@ const FRESH_MS = 30_000;
 const FOLD_MS = 8_000;
 const REPLAY_MS = 10 * 60_000;
 const REPLAY_GAP_MS = 900;
+const SEAT_MIN_PX = 148;
+const SEAT_GAP_PX = 12;
 
 const PACKET_COLOR: Record<PacketTone, string> = {
   dispatch: "var(--series-1)",
@@ -277,7 +279,13 @@ function useEdges(root: React.RefObject<HTMLDivElement | null>, team: Team) {
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(element);
-    return () => observer.disconnect();
+    // The top of the chart is pinned while the seats scroll sideways.
+    const scroller = element.parentElement;
+    scroller?.addEventListener("scroll", measure, { passive: true });
+    return () => {
+      observer.disconnect();
+      scroller?.removeEventListener("scroll", measure);
+    };
   });
   return edges;
 }
@@ -706,114 +714,130 @@ export function TeamGraph({
     seat.shown.forEach(collect);
   }
 
+  // One row of seats at any width: a narrow pane scrolls sideways instead of
+  // wrapping, because a second row puts cards under the edges of the first.
+  const minWidth =
+    team.seats.length * SEAT_MIN_PX + (team.seats.length - 1) * SEAT_GAP_PX;
+
   return (
-    <div ref={root} className="relative">
-      <svg
-        className="pointer-events-none absolute inset-0 size-full overflow-visible"
-        aria-hidden
-      >
-        <title>Team edges and messages</title>
-        {edges.map((edge) => {
-          const style = edgeStyle(
-            edge.key,
-            team.seats,
-            runsById,
-            attention,
-            sessionRunning,
-          );
-          return (
-            <g key={edge.key}>
-              <path
-                d={edge.d}
-                fill="none"
-                stroke={style.stroke}
-                strokeOpacity={style.flow ? 0.45 : 1}
-                strokeDasharray={style.dash}
-                strokeWidth={1}
-              />
-              {style.flow && (
+    <div className="-m-1.5 overflow-x-auto p-1.5 [container-type:inline-size]">
+      <div ref={root} className="relative" style={{ minWidth }}>
+        <svg
+          className="pointer-events-none absolute inset-0 size-full overflow-visible"
+          aria-hidden
+        >
+          <title>Team edges and messages</title>
+          {edges.map((edge) => {
+            const style = edgeStyle(
+              edge.key,
+              team.seats,
+              runsById,
+              attention,
+              sessionRunning,
+            );
+            return (
+              <g key={edge.key}>
                 <path
                   d={edge.d}
                   fill="none"
                   stroke={style.stroke}
-                  strokeWidth={1.25}
-                  strokeLinecap="round"
-                  className={
-                    style.flow === "up" ? "flow-dash-up" : "flow-dash-slow"
-                  }
+                  strokeOpacity={style.flow ? 0.45 : 1}
+                  strokeDasharray={style.dash}
+                  strokeWidth={1}
                 />
-              )}
-            </g>
-          );
-        })}
-        {packets.flatMap((packet) =>
-          packet.hops.flatMap((hop, index) => {
-            const edge = edgeByKey.get(hop);
-            if (!edge) {
-              return [];
-            }
-            return [
-              <PacketDot
-                key={`${packet.id}:${hop}`}
-                path={edge.d}
-                delay={index * HOP_MS}
-                up={packet.direction === "up"}
-                color={PACKET_COLOR[packet.tone]}
-              />,
-            ];
-          }),
-        )}
-      </svg>
-
-      {sessionSource && (
-        <button
-          type="button"
-          onClick={startReplay}
-          disabled={replayed !== null}
-          className="absolute top-0 right-0 z-10 inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] text-muted ring-1 ring-hairline enabled:hover:bg-surface enabled:hover:text-ink motion-reduce:hidden"
-          title="Play back the messages this team exchanged in the last 10 minutes"
-        >
-          <History className="size-3.5" aria-hidden />
-          {replayed === null
-            ? "Replay last 10 min"
-            : replayed === 0
-              ? "No messages in 10 min"
-              : `Replaying ${replayed} message${replayed === 1 ? "" : "s"}`}
-        </button>
-      )}
-      <div className="relative flex flex-col items-center gap-7">
-        <div
-          data-node={YOU}
-          className={`relative flex items-center gap-2 rounded-full border px-3 py-1 text-xs ${
-            attention > 0
-              ? "border-status-warning/70 bg-status-warning/10 text-status-warning"
-              : "border-hairline bg-surface text-ink-secondary"
-          }`}
-        >
-          <Landing ping={pings.get(YOU)} />
-          <UserRound className="size-3.5" aria-hidden />
-          You
-          {attention > 0 && (
-            <span className="rounded-full bg-status-warning px-1.5 text-[10px] font-semibold text-page tabular">
-              {attention}
-            </span>
+                {style.flow && (
+                  <path
+                    d={edge.d}
+                    fill="none"
+                    stroke={style.stroke}
+                    strokeWidth={1.25}
+                    strokeLinecap="round"
+                    className={
+                      style.flow === "up" ? "flow-dash-up" : "flow-dash-slow"
+                    }
+                  />
+                )}
+              </g>
+            );
+          })}
+          {packets.flatMap((packet) =>
+            packet.hops.flatMap((hop, index) => {
+              const edge = edgeByKey.get(hop);
+              if (!edge) {
+                return [];
+              }
+              return [
+                <PacketDot
+                  key={`${packet.id}:${hop}`}
+                  path={edge.d}
+                  delay={index * HOP_MS}
+                  up={packet.direction === "up"}
+                  color={PACKET_COLOR[packet.tone]}
+                />,
+              ];
+            }),
           )}
-        </div>
-        <div data-node={ORCHESTRATOR} className="relative w-full max-w-3xl">
-          <Landing ping={pings.get(ORCHESTRATOR)} />
-          {orchestrator}
-        </div>
-        <div className="grid w-full grid-cols-[repeat(auto-fit,minmax(min(100%,148px),1fr))] items-start gap-x-3 gap-y-6">
-          {team.seats.map((seat, index) => (
-            <SeatColumn
-              key={seat.role}
-              seat={seat}
-              context={context}
-              pings={pings}
-              stageFilter={stageFilter}
-              index={index}
-            />
-          ))}
+        </svg>
+
+        <div className="relative flex flex-col items-center gap-7">
+          {/* Stays centred in the visible pane while the seats scroll under it. */}
+          <div className="sticky left-0 flex w-[100cqw] flex-col items-center gap-7 self-start">
+            {sessionSource && (
+              <button
+                type="button"
+                onClick={startReplay}
+                disabled={replayed !== null}
+                className="absolute top-0 right-0 z-10 inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] text-muted ring-1 ring-hairline enabled:hover:bg-surface enabled:hover:text-ink motion-reduce:hidden"
+                title="Play back the messages this team exchanged in the last 10 minutes"
+              >
+                <History className="size-3.5" aria-hidden />
+                {replayed === null
+                  ? "Replay last 10 min"
+                  : replayed === 0
+                    ? "No messages in 10 min"
+                    : `Replaying ${replayed} message${replayed === 1 ? "" : "s"}`}
+              </button>
+            )}
+            <div
+              data-node={YOU}
+              className={`relative flex items-center gap-2 rounded-full border px-3 py-1 text-xs ${
+                attention > 0
+                  ? "border-status-warning/70 bg-status-warning/10 text-status-warning"
+                  : "border-hairline bg-surface text-ink-secondary"
+              }`}
+            >
+              <Landing ping={pings.get(YOU)} />
+              <UserRound className="size-3.5" aria-hidden />
+              You
+              {attention > 0 && (
+                <span className="rounded-full bg-status-warning px-1.5 text-[10px] font-semibold text-page tabular">
+                  {attention}
+                </span>
+              )}
+            </div>
+            <div data-node={ORCHESTRATOR} className="relative w-full max-w-3xl">
+              <Landing ping={pings.get(ORCHESTRATOR)} />
+              {orchestrator}
+            </div>
+          </div>
+          <div
+            className="grid w-full items-start"
+            style={{
+              gridTemplateColumns: `repeat(${team.seats.length}, minmax(0, 1fr))`,
+              columnGap: SEAT_GAP_PX,
+            }}
+          >
+            {team.seats.map((seat, index) => (
+              <SeatColumn
+                key={seat.role}
+                seat={seat}
+                context={context}
+                pings={pings}
+                stageFilter={stageFilter}
+                index={index}
+              />
+            ))}
+          </div>
         </div>
       </div>
     </div>

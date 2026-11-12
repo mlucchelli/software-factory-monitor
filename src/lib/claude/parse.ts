@@ -1,4 +1,5 @@
 import { ticketPrefixes } from "../config";
+import { type ReportField, reportFields } from "../report-fields";
 import { ticketPattern } from "./ticket";
 import type {
   ActivityEvent,
@@ -27,21 +28,6 @@ interface ContentBlock {
 }
 
 const REPORT_TOOL = "SubagentHandback";
-
-const REPORT_FIELDS = new Set([
-  "AGENT",
-  "MODE",
-  "STATUS",
-  "TICKET",
-  "PR",
-  "WORKTREE",
-  "PREVIEW",
-  "CHECKS",
-  "DEVIATIONS",
-  "SUMMARY",
-  "QUESTIONS",
-  "NEXT",
-]);
 
 const HARNESS_PREFIXES = [
   "<system-reminder>",
@@ -163,21 +149,8 @@ export function parseQuestions(
 }
 
 export function parseReport(raw: string): AgentReport {
-  const fields: Record<string, string> = {};
-  let current: string | null = null;
-  for (const line of raw.split("\n")) {
-    const match = /^([A-Z]+):\s?(.*)$/.exec(line);
-    if (match && REPORT_FIELDS.has(match[1])) {
-      current = match[1];
-      fields[current] = match[2];
-    } else if (current) {
-      fields[current] += `\n${line}`;
-    }
-  }
-  const value = (key: string) => {
-    const trimmed = fields[key]?.trim();
-    return trimmed && trimmed !== "-" ? trimmed : undefined;
-  };
+  const fields = reportFields(raw);
+  const value = (key: ReportField) => fields[key];
   return {
     raw,
     agent: value("AGENT"),

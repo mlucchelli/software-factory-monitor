@@ -52,7 +52,7 @@ export function AttentionStrip({
   }
   return (
     <section
-      className="motion-rise relative overflow-hidden rounded-xl border border-status-warning/40 bg-status-warning/[0.06]"
+      className="motion-rise relative w-fit max-w-full overflow-hidden rounded-xl border border-status-warning/40 bg-status-warning/[0.06]"
       aria-label={`${count} waiting on you`}
     >
       <span

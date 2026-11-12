@@ -25,9 +25,11 @@ import {
   useChatStream,
 } from "@/lib/client/chat";
 import { formatClock, roleStyle } from "@/lib/client/present";
+import { looksLikeReport } from "@/lib/report-fields";
 import { ToolRow } from "../stream/stream-view";
 import { StatusPill } from "../ui";
 import { Markdown } from "./markdown";
+import { ReportCard } from "./report-card";
 
 const STICK_PX = 96;
 const LONG_MESSAGE = 1600;
@@ -194,9 +196,13 @@ function Entry({
               {formatClock(entry.ts)}
             </span>
           </span>
-          <Collapsible text={entry.text}>
-            <Markdown text={entry.text} />
-          </Collapsible>
+          {looksLikeReport(entry.text) ? (
+            <ReportCard text={entry.text} />
+          ) : (
+            <Collapsible text={entry.text}>
+              <Markdown text={entry.text} />
+            </Collapsible>
+          )}
         </div>
       );
     }
@@ -241,13 +247,17 @@ function Entry({
           <span className="flex items-center gap-2 text-[11px] text-muted">
             <Flag className="size-3" aria-hidden />
             Report handed back
-            {entry.status && (
+            {entry.status && !looksLikeReport(entry.text) && (
               <StatusPill status="reported" reportStatus={entry.status} />
             )}
           </span>
-          <Collapsible text={entry.text}>
-            <Markdown text={entry.text} />
-          </Collapsible>
+          {looksLikeReport(entry.text) ? (
+            <ReportCard text={entry.text} />
+          ) : (
+            <Collapsible text={entry.text}>
+              <Markdown text={entry.text} />
+            </Collapsible>
+          )}
         </div>
       );
   }
