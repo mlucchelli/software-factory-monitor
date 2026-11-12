@@ -1,27 +1,10 @@
-import { allowedHosts } from "../config";
-
 const LOCAL_HOST = /^(127\.0\.0\.1|localhost)(:\d+)?$/;
 
-/** Local always; any other name only when `AGENTS_MONITOR_ALLOWED_HOSTS` lists it. */
-export function isAllowedHost(host: string, allowed: string[]): boolean {
-  const name = host.toLowerCase();
-  return (
-    LOCAL_HOST.test(name) ||
-    allowed.includes(name) ||
-    allowed.includes(name.replace(/:\d+$/, ""))
-  );
-}
-
 /**
- * Actions type into terminals, so only this app's own pages may call them: the Host must be one
- * the monitor is meant to be opened at (blocks DNS rebinding) and the Origin must match it (blocks
- * cross-site form posts and fetches). This is not authentication: whoever can open the page can
- * use it, so a monitor on another machine belongs behind a private network.
+ * Actions type into terminals, so only this app's own pages may call them: the Host must be local
+ * (blocks DNS rebinding) and the Origin must match it (blocks cross-site form posts and fetches).
  */
-export function rejectForeignRequest(
-  request: Request,
-  allowed: string[] = allowedHosts,
-): Response | null {
+export function rejectForeignRequest(request: Request): Response | null {
   const host = request.headers.get("host") ?? "";
   const origin = request.headers.get("origin");
   const fetchSite = request.headers.get("sec-fetch-site");
@@ -35,7 +18,7 @@ export function rejectForeignRequest(
     originHost = undefined;
   }
   if (
-    !isAllowedHost(host, allowed) ||
+    !LOCAL_HOST.test(host) ||
     originHost !== host ||
     (fetchSite !== null && fetchSite !== "same-origin") ||
     !json

@@ -21,7 +21,6 @@ import {
   TONE_COLOR,
 } from "@/lib/client/present";
 import type { Initiative } from "@/lib/initiatives";
-import { terminalLabel } from "@/lib/terminal/ref";
 import { AgentConversation, SessionChat } from "../chat/session-chat";
 import { Chip, RoleBadge } from "../ui";
 import { type Focus, RunGlyph } from "./agent-node";
@@ -193,7 +192,7 @@ function AgentBody({
         agent={agent}
         session={session}
         onAskOrchestrator={
-          onAskAbout && session.live?.terminal
+          onAskAbout && session.live?.tmuxPane
             ? () => onAskAbout(agent)
             : undefined
         }
@@ -444,8 +443,8 @@ export function FocusPanel({
               lastActivity={session.lastActivity}
               now={now}
             >
-              {session.live?.terminal && (
-                <span>{terminalLabel(session.live.terminal)}</span>
+              {session.live?.tmuxPane && (
+                <span>tmux {session.live.tmuxPane}</span>
               )}
             </Metrics>
           </div>

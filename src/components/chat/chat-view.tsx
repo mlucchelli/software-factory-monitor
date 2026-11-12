@@ -359,7 +359,7 @@ function QuestionCard({
       <p className="text-[10px] text-muted">
         {onAnswer
           ? "Picking an option opens the answer dialog, which shows the live terminal and asks you to confirm the keys."
-          : "This session is not in tmux or Orca, so it has to be answered in its terminal."}
+          : "This session is not in tmux, so it has to be answered in its terminal."}
       </p>
     </div>
   );

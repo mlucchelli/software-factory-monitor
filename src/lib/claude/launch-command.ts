@@ -92,7 +92,7 @@ export function tmuxSessionName(label: string, suffix: string): string {
  * flags are added: the session starts exactly as `claude "<prompt>"` would.
  */
 export function launchArgv(options: {
-  launchName: string;
+  tmuxName: string;
   cwd: string;
   claudeBin: string;
   prompt: string;
@@ -101,7 +101,7 @@ export function launchArgv(options: {
     "new-session",
     "-d",
     "-s",
-    options.launchName,
+    options.tmuxName,
     "-c",
     options.cwd,
     "--",

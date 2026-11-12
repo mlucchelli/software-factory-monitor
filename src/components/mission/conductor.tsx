@@ -7,7 +7,6 @@ import {
 } from "lucide-react";
 import type { ActivityEvent, AgentInfo, SessionInfo } from "@/lib/claude/types";
 import { formatAgo, roleStyle, SESSION_ROLE } from "@/lib/client/present";
-import { terminalLabel } from "@/lib/terminal/ref";
 import { Chip } from "../ui";
 import type { Focus } from "./agent-node";
 import { ContextGauge, NowLine } from "./metrics";
@@ -89,7 +88,7 @@ export function Conductor({
         <span className="hidden shrink-0 @3xl:inline">
           <Chip>
             {live
-              ? `${live.name ?? live.pid}${live.terminal ? ` · ${terminalLabel(live.terminal)}` : ""}`
+              ? `${live.name ?? live.pid}${live.tmuxPane ? ` · tmux ${live.tmuxPane}` : ""}`
               : "process not running"}
           </Chip>
         </span>

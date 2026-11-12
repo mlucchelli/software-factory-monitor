@@ -29,7 +29,7 @@ export interface AttentionItem {
   since: number;
   href?: string;
   external?: boolean;
-  /** The session shows a selection dialog in a terminal the monitor reaches, so it can be answered from the monitor. */
+  /** The session shows a selection dialog in a tmux pane, so it can be answered from the monitor. */
   answerable?: boolean;
 }
 
@@ -156,7 +156,7 @@ export function collectAttention(
           prompt.question ??
           prompt.options.map((option) => option.label).join(" · "),
         since: session.live?.updatedAt ?? session.lastActivity,
-        answerable: session.live?.terminal !== undefined,
+        answerable: session.live?.tmuxPane !== undefined,
       });
     }
     const sessionItem = prompt

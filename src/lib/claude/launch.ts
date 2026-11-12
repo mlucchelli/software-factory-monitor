@@ -4,12 +4,7 @@ import { access, readdir, readFile, stat } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
-import { claudeBin, launchHost, reposRoot } from "../config";
-import {
-  claudeCommandLine,
-  createArgs,
-  createOrcaTerminal,
-} from "../terminal/orca";
+import { claudeBin, reposRoot } from "../config";
 import {
   displayCommand,
   initiativePrompt,
@@ -17,7 +12,6 @@ import {
   launchArgv,
   tmuxSessionName,
 } from "./launch-command";
-import { listLiveProcesses } from "./live-sessions";
 import { liveSessionsDir } from "./paths";
 
 const execFileAsync = promisify(execFile);
@@ -84,14 +78,10 @@ export async function listLaunchTargets(): Promise<LaunchTarget[]> {
 export interface LaunchPlan {
   suffix: string;
   cwd: string;
-  launchName: string;
+  tmuxName: string;
   prompt: string;
-  host: "tmux" | "orca";
-  /** tmux: the argv it execs. Orca: the arguments of `orca terminal create`. */
   argv: string[];
   command: string;
-  /** Whether `cwd` is a git checkout; Orca registers anything else as a folder. */
-  isGit: boolean;
 }
 
 /** Resolves a request to the exact spawn, or an error the endpoint answers with 400. */
@@ -117,58 +107,36 @@ export async function planLaunch(
     label = request.ticket ? `initiative-${request.ticket}` : "initiative";
     prompt = initiativePrompt(request);
   }
-  const launchName = tmuxSessionName(label, suffix);
-  const isGit = request.kind === "session";
-  if (launchHost === "orca") {
-    const argv = createArgs({
-      cwd,
-      title: launchName,
-      command: claudeCommandLine(claudeBin, prompt),
-    });
-    return {
-      suffix,
-      cwd,
-      launchName,
-      prompt,
-      host: "orca",
-      argv,
-      command: displayCommand("orca", argv),
-      isGit,
-    };
-  }
-  const argv = launchArgv({ launchName, cwd, claudeBin, prompt });
+  const tmuxName = tmuxSessionName(label, suffix);
+  const argv = launchArgv({ tmuxName, cwd, claudeBin, prompt });
   return {
     suffix,
     cwd,
-    launchName,
+    tmuxName,
     prompt,
-    host: "tmux",
     argv,
     command: displayCommand("tmux", argv),
-    isGit,
   };
 }
 
 interface Pending {
-  launchName: string;
+  tmuxName: string;
   cwd: string;
   startedAt: number;
   sessionId?: string;
-  /** Set for an Orca launch: the terminal the session will appear in. */
-  orcaHandle?: string;
 }
 
 let pending: Pending | null = null;
 
 /** The session Claude Code registered for a tmux session we started, if any yet. */
-async function sessionIdFor(launchName: string): Promise<string | undefined> {
+async function sessionIdFor(tmuxName: string): Promise<string | undefined> {
   const files = await readdir(liveSessionsDir).catch(() => []);
   for (const file of files.filter((name) => /^\d+\.json$/.test(name))) {
     try {
       const entry = JSON.parse(
         await readFile(path.join(liveSessionsDir, file), "utf8"),
       ) as { sessionId?: string; tmux?: string };
-      if (entry.sessionId && entry.tmux?.startsWith(`${launchName}:`)) {
+      if (entry.sessionId && entry.tmux?.startsWith(`${tmuxName}:`)) {
         return entry.sessionId;
       }
     } catch {
@@ -178,18 +146,8 @@ async function sessionIdFor(launchName: string): Promise<string | undefined> {
   return undefined;
 }
 
-/** The session whose Claude process runs in the Orca terminal we created. */
-async function sessionIdInOrca(handle: string): Promise<string | undefined> {
-  for (const [sessionId, live] of await listLiveProcesses()) {
-    if (live.terminal?.kind === "orca" && live.terminal.id === handle) {
-      return sessionId;
-    }
-  }
-  return undefined;
-}
-
 export interface LaunchStatus {
-  launchName: string;
+  tmuxName: string;
   startedAt: number;
   sessionId?: string;
   timedOut: boolean;
@@ -201,12 +159,10 @@ export async function launchStatus(): Promise<LaunchStatus | null> {
     return null;
   }
   if (!pending.sessionId) {
-    pending.sessionId = pending.orcaHandle
-      ? await sessionIdInOrca(pending.orcaHandle)
-      : await sessionIdFor(pending.launchName);
+    pending.sessionId = await sessionIdFor(pending.tmuxName);
   }
   return {
-    launchName: pending.launchName,
+    tmuxName: pending.tmuxName,
     startedAt: pending.startedAt,
     sessionId: pending.sessionId,
     timedOut:
@@ -220,33 +176,16 @@ export async function busyReason(): Promise<string | null> {
   if (!status || status.sessionId || status.timedOut) {
     return null;
   }
-  return `Still starting ${status.launchName}; try again once it shows up`;
+  return `Still starting ${status.tmuxName}; try again once it shows up`;
 }
 
-/**
- * Spawns the plan. With tmux the argv is exec'd as an array and no shell ever
- * sees it. Orca types a command line into the new terminal's shell instead, so
- * that path quotes the prompt (see `claudeCommandLine`).
- */
+/** Spawns the plan. The argv goes to tmux as an array: no shell ever sees it. */
 export async function runLaunch(plan: LaunchPlan): Promise<void> {
   await access(plan.cwd);
   await access(claudeBin);
-  pending = {
-    launchName: plan.launchName,
-    cwd: plan.cwd,
-    startedAt: Date.now(),
-  };
+  pending = { tmuxName: plan.tmuxName, cwd: plan.cwd, startedAt: Date.now() };
   try {
-    if (plan.host === "orca") {
-      pending.orcaHandle = await createOrcaTerminal({
-        cwd: plan.cwd,
-        isGit: plan.isGit,
-        title: plan.launchName,
-        command: claudeCommandLine(claudeBin, plan.prompt),
-      });
-    } else {
-      await execFileAsync("tmux", plan.argv, { timeout: 5000 });
-    }
+    await execFileAsync("tmux", plan.argv, { timeout: 5000 });
   } catch (error) {
     pending = null;
     throw error;

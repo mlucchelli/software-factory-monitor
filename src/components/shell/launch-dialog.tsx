@@ -16,7 +16,7 @@ type InitiativeMode = "new" | "resume" | "status";
 interface Preview {
   cwd: string;
   command: string;
-  launchName: string;
+  tmuxName: string;
   suffix: string;
 }
 
@@ -137,7 +137,7 @@ export function LaunchDialog({
         } catch {}
       }
       onLaunched({
-        launchName: started.launchName,
+        tmuxName: started.tmuxName,
         kind,
         label,
         at: Date.now(),
@@ -230,8 +230,8 @@ export function LaunchDialog({
                     <span className="text-[11px] text-status-warning">
                       Claude has not been trusted in this folder yet, so it will
                       stop at its trust dialog before reading your prompt. The
-                      monitor cannot answer that dialog: attach to the session
-                      and choose, or open Claude there once yourself.
+                      monitor cannot answer that dialog: attach to the tmux
+                      session and choose, or open Claude there once yourself.
                     </span>
                   )}
                   <span className="text-[11px] text-muted">
@@ -333,9 +333,8 @@ export function LaunchDialog({
         ) : (
           <div className="grid gap-3">
             <p className="text-xs text-ink-secondary">
-              The monitor will run exactly this, in a new detached tmux session
-              or Orca terminal. Claude starts with no extra flags, as if you
-              typed it.
+              The monitor will run exactly this, in a new detached tmux session.
+              Claude starts with no extra flags, as if you typed it.
             </p>
             <dl className="grid gap-2 text-xs">
               <div className="grid gap-1">

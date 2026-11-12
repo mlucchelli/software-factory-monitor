@@ -1,9 +1,7 @@
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
-import { orcaHandles } from "../terminal/orca";
-import type { TerminalRef } from "../terminal/ref";
 import { liveSessionsDir } from "./paths";
-import { captureTerminal, parseScreenPrompt } from "./tmux";
+import { capturePane, parseScreenPrompt } from "./tmux";
 import type { LiveProcess } from "./types";
 
 interface SessionFile {
@@ -25,19 +23,18 @@ function isAlive(pid: number): boolean {
 }
 
 /** Claude Code stores the tmux target as `session:@window.%pane`; the pane id alone addresses it. */
-function tmuxRef(tmux: string | undefined): TerminalRef | undefined {
-  const pane = tmux ? /%\d+$/.exec(tmux)?.[0] : undefined;
-  return pane ? { kind: "tmux", id: pane } : undefined;
+function paneOf(tmux: string | undefined): string | undefined {
+  return tmux ? /%\d+$/.exec(tmux)?.[0] : undefined;
 }
 
 const WAITING_STATUS = "waiting";
 
 async function promptOnScreen(entry: LiveProcess) {
-  if (entry.status !== WAITING_STATUS || !entry.terminal) {
+  if (entry.status !== WAITING_STATUS || !entry.tmuxPane) {
     return undefined;
   }
   try {
-    return parseScreenPrompt(await captureTerminal(entry.terminal));
+    return parseScreenPrompt(await capturePane(entry.tmuxPane));
   } catch {
     return undefined;
   }
@@ -71,7 +68,7 @@ export async function listLiveProcesses(): Promise<Map<string, LiveProcess>> {
           pid: entry.pid,
           name: entry.name,
           status: entry.status,
-          terminal: tmuxRef(entry.tmux),
+          tmuxPane: paneOf(entry.tmux),
           updatedAt: entry.updatedAt,
         });
       } catch {
@@ -79,18 +76,6 @@ export async function listLiveProcesses(): Promise<Map<string, LiveProcess>> {
       }
     }),
   );
-  // Orca wins over tmux: an Orca server started from inside tmux hands its
-  // terminals the TMUX variable of the pane it was started in, which is not
-  // where the session runs.
-  const handles = await orcaHandles(
-    [...live.values()].map((entry) => entry.pid),
-  );
-  for (const entry of live.values()) {
-    const handle = handles.get(entry.pid);
-    if (handle) {
-      entry.terminal = { kind: "orca", id: handle };
-    }
-  }
   await Promise.all(
     [...live.values()].map(async (entry) => {
       entry.prompt = await promptOnScreen(entry);

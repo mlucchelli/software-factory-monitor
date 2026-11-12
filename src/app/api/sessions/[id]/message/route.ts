@@ -1,4 +1,4 @@
-import { captureTerminal, sendMessage } from "@/lib/claude/tmux";
+import { capturePane, sendMessage } from "@/lib/claude/tmux";
 import { getSessionState } from "@/lib/claude/transcripts";
 import { rejectForeignRequest } from "@/lib/server/same-origin";
 
@@ -23,10 +23,10 @@ export async function POST(
   }
 
   const state = await getSessionState(id);
-  const pane = state?.live?.terminal;
+  const pane = state?.live?.tmuxPane;
   if (!pane) {
     return Response.json(
-      { error: "The session is not in a terminal the monitor can reach" },
+      { error: "The session is not running in a tmux pane" },
       { status: 409 },
     );
   }
@@ -48,7 +48,7 @@ export async function POST(
   try {
     await sendMessage(pane, body.text);
     await new Promise((resolve) => setTimeout(resolve, SETTLE_MS));
-    return Response.json({ screen: await captureTerminal(pane) });
+    return Response.json({ screen: await capturePane(pane) });
   } catch (error) {
     return Response.json(
       { error: error instanceof Error ? error.message : String(error) },

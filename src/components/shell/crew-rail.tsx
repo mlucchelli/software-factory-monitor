@@ -469,7 +469,7 @@ function StartingRow({
   return (
     <li
       className="motion-rise flex min-w-0 items-center gap-2.5 rounded-lg px-2 py-1.5"
-      title={launch.failed ?? `Starting ${launch.launchName}`}
+      title={launch.failed ?? `Starting ${launch.tmuxName}`}
     >
       {failed ? (
         <CircleAlert
@@ -491,7 +491,7 @@ function StartingRow({
             <span
               className={`truncate text-[11px] ${failed ? "text-status-critical" : "text-muted"}`}
             >
-              {text} · <span className="font-mono">{launch.launchName}</span>
+              {text} · <span className="font-mono">{launch.tmuxName}</span>
             </span>
           </span>
           {failed && (
@@ -540,10 +540,10 @@ export function CrewRail({
       .filter((launch) => launch.kind === kind)
       .map((launch) => (
         <StartingRow
-          key={launch.launchName}
+          key={launch.tmuxName}
           launch={launch}
           collapsed={collapsed}
-          onDismiss={() => dismissLaunch(launch.launchName)}
+          onDismiss={() => dismissLaunch(launch.tmuxName)}
         />
       ));
   const pathname = usePathname();

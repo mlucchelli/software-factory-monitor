@@ -1,4 +1,4 @@
-import { captureTerminal, parseScreenPrompt } from "@/lib/claude/tmux";
+import { capturePane, parseScreenPrompt } from "@/lib/claude/tmux";
 import { getSessionState } from "@/lib/claude/transcripts";
 
 export const dynamic = "force-dynamic";
@@ -9,7 +9,7 @@ export async function GET(
 ) {
   const { id } = await params;
   const state = await getSessionState(id);
-  const pane = state?.live?.terminal;
+  const pane = state?.live?.tmuxPane;
   if (!state?.live) {
     return Response.json(
       { error: "This session's Claude Code process is not running" },
@@ -19,14 +19,14 @@ export async function GET(
   if (!pane) {
     return Response.json(
       {
-        error: "This session is not in a terminal the monitor can reach",
+        error: "This session is not running inside tmux",
         live: state.live,
       },
       { status: 409 },
     );
   }
   try {
-    const screen = await captureTerminal(pane);
+    const screen = await capturePane(pane);
     return Response.json({
       live: state.live,
       screen,

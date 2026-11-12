@@ -24,7 +24,7 @@ async function postMessage(sessionId: string, text: string) {
 
 const drafts = new Map<string, string>();
 
-/** A live session as a chat: its transcript, and a composer that types into its terminal. */
+/** A live session as a chat: its transcript, and a composer that types into its tmux pane. */
 export function SessionChat({
   session,
   prefill,
@@ -125,7 +125,7 @@ export function SessionChat({
           setOutgoing((list) => list.filter((item) => item.id !== id))
         }
         question={live?.prompt}
-        onAnswer={live?.terminal ? onAnswer : undefined}
+        onAnswer={live?.tmuxPane ? onAnswer : undefined}
         working={session.status === "running"}
       />
       <ChatComposer
