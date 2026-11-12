@@ -128,10 +128,10 @@ The view follows the live tail while you are at the bottom and shows a "new mess
 
 It opens from the orchestrator bar's **Chat** button, from the chat icon on a rail row, or with `?chat=1` on the crew's URL.
 
-The composer at the bottom names the session and tmux pane it types into.
+The composer at the bottom names the session and the terminal it types into.
 Enter sends and Shift+Enter adds a line; the terminal takes one line, so line breaks are sent as spaces.
 A message shows as sending, then is replaced by the prompt once it appears in the transcript, or shows why it was refused.
-When the session cannot take a message (not in tmux, busy, or showing a question) the composer says why and stays disabled.
+When the session cannot take a message (not in tmux or Orca, busy, or showing a question) the composer says why and stays disabled.
 
 Sub-agents have no terminal of their own, so their conversation is read-only.
 **Ask the orchestrator** opens the orchestrator's composer with a reference to that run, and the orchestrator forwards it.
@@ -195,7 +195,7 @@ All motion is disabled under `prefers-reduced-motion`.
 | `~/.claude/projects/<project>/<session>.jsonl` | Session title, branch, last prompt, activity, cost and context |
 | `~/.claude/projects/<project>/<session>/subagents/agent-<id>.jsonl` + `.meta.json` | Sub-agent role, parent, depth, tool calls, `SubagentHandback` reports |
 | `~/.claude/agents/*.md` | Each role's model, modes and mission: the seats of the team |
-| `~/.claude/sessions/<pid>.json` | Which sessions are running, their status and tmux pane |
+| `~/.claude/sessions/<pid>.json` | Which sessions are running, their status and tmux pane (an Orca terminal comes from the process environment) |
 | `~/.claude/initiatives/<KEY>/registry.md` | Initiative phase, orchestrator log and its agent ids |
 
 Transcripts reach hundreds of MB, so a file is only read from its head or its tail, and summaries are cached by mtime and size.
@@ -223,7 +223,7 @@ They sit behind `PullRequestSource` in `src/lib/pull-requests/` the same way.
 ### Acting on a session
 
 The monitor is read-only, with three exceptions.
-Two act on a session already running inside tmux, one starts a new one, and each needs an explicit act from you.
+Two act on a session already running inside tmux or Orca, one starts a new one, and each needs an explicit act from you.
 
 - **Answer a waiting session.** An open `AskUserQuestion` or permission prompt is not in the transcript, so its question and options are read from the pane and offered as buttons; confirming types the matching keys. This keeps its confirmation dialog with the exact keys and the live pane.
 - **Message an idle session.** Types the text and presses Enter. In the chat, pressing Enter in the composer is the confirmation: the composer names the target session and pane, and there is no second dialog.
@@ -231,18 +231,43 @@ Two act on a session already running inside tmux, one starts a new one, and each
 
 A folder whose trust Claude has not accepted yet stops at Claude's trust dialog before reading the prompt, and the monitor cannot answer it; the dialog warns about those folders.
 
+### tmux or Orca
+
+A session has to run in a terminal the monitor can reach before it can be answered or messaged.
+Two hosts are supported, behind one interface (`src/lib/terminal/`).
+
+- **tmux.** Claude Code records the pane in its session file. The monitor reads the screen with `capture-pane` and types with `send-keys`.
+- **[Orca](https://github.com/stablyai/orca).** Orca exports `ORCA_TERMINAL_HANDLE` into every terminal it starts and Claude inherits it, so the monitor reads the handle from the environment of the Claude process. It reads the screen with `orca terminal read --screen` and types with `orca terminal send`.
+
+Both are found on their own, with no setting. A session started in a plain terminal window has neither and stays read-only.
+When a process carries both, Orca wins: an Orca server started from inside tmux passes that pane's `TMUX` variable on to its terminals, and typing there would reach the wrong session.
+
+`AGENTS_MONITOR_TERMINAL=orca` makes new sessions start in Orca instead of tmux.
+The monitor adds the folder to Orca if it is not there yet (`orca repo add`), then runs `orca terminal create --worktree=path:<dir> --title=am-<name>-<hex> --command=<claude> '<first prompt>'`.
+It does not use `orca agent launch`: that follows the agent arguments saved in Orca's settings, which can include skipping permissions, and the monitor starts Claude with no flags.
+
+### Running it on another machine
+
+The monitor reads `~/.claude` from the disk of the machine it runs on, so it runs where the sessions run.
+With a headless Orca (`orca serve`) on a server, start the monitor on that server and open it from your laptop.
+
+1. On the server, set `AGENTS_MONITOR_TERMINAL=orca` and list the name you will open it with in `AGENTS_MONITOR_ALLOWED_HOSTS` (for example `mini.tailnet.ts.net`).
+2. Start it on an address your private network reaches, for example `pnpm exec next start -H <tailscale ip> -p 4310`.
+
+The monitor has no login. Whoever can open the page can read every transcript and type into every session, so put it only on a private network such as a tailnet, never on a public address.
+
 Nothing else is ever written: no comments on Linear or GitHub, no worktree touched, nothing under `~/.claude`, no initiative registry (the orchestrator writes that once it runs).
 
 ### Security
 
-Transcripts contain full model output, file contents and tool results, so the server binds to `127.0.0.1` only.
-Do not expose it through a tunnel or a reverse proxy.
+Transcripts contain full model output, file contents and tool results, so the server binds to `127.0.0.1` unless you start it on another address yourself.
+Do not expose it to the internet through a tunnel or a reverse proxy.
 
-All three actions are refused unless the request comes from this app's own page on a local host, and an answer is refused unless the same dialog is still on screen.
+All three actions are refused unless the request comes from this app's own page, on a local host or one listed in `AGENTS_MONITOR_ALLOWED_HOSTS`, and an answer is refused unless the same dialog is still on screen.
 
-Starting a session (`POST /api/sessions`) accepts only `{kind: "session", target, prompt}` or `{kind: "initiative", mode, requirement | ticket}`. The target is a key the server maps to a directory it discovered itself; a path in the request is never used. The command is handed to `tmux` as an argument array, never through a shell, so the prompt is one untouched argument. The launch must echo the name its preview showed, so what runs is what you confirmed, and only one launch runs at a time until the previous one registers or 30 seconds pass.
+Starting a session (`POST /api/sessions`) accepts only `{kind: "session", target, prompt}` or `{kind: "initiative", mode, requirement | ticket}`. The target is a key the server maps to a directory it discovered itself; a path in the request is never used. The command is handed to `tmux` as an argument array, never through a shell, so the prompt is one untouched argument. Orca types a command line into the new terminal's shell instead, so on that path the prompt is single-quoted and control characters other than a line break are removed. The launch must echo the name its preview showed, so what runs is what you confirmed, and only one launch runs at a time until the previous one registers or 30 seconds pass.
 
-In demo mode `POST /api/sessions` answers 403, and the other two actions have no tmux pane to type into.
+In demo mode `POST /api/sessions` answers 403, and the other two actions have no terminal to type into.
 
 ## Stack
 
@@ -253,7 +278,7 @@ In demo mode `POST /api/sessions` answers 403, and the other two actions have no
 | Live updates | Server-sent events over file polling |
 | Issues | Linear GraphQL API |
 | Pull requests | GitHub via the `gh` CLI |
-| Terminal actions | tmux (`capture-pane`, `send-keys`, `new-session`) |
+| Terminal actions | tmux (`capture-pane`, `send-keys`, `new-session`) or the Orca CLI (`terminal read`, `terminal send`, `terminal create`) |
 | Tests | Vitest, Playwright |
 | Lint and format | Biome |
 | CI | GitHub Actions: lint, typecheck, unit tests, build, and smoke tests over the demo |
@@ -270,7 +295,8 @@ src/
     live/, initiatives/, costs/, agent/, stream/ — the other views
   lib/
     config.ts             — every environment variable the server reads
-    claude/               — server-only readers over ~/.claude: transcripts, sessions, roster, usage, tmux, launch
+    claude/               — server-only readers over ~/.claude: transcripts, sessions, roster, usage, launch
+    terminal/             — TerminalHost interface, tmux, Orca
     trackers/             — IssueTracker interface, Linear, demo
     pull-requests/        — PullRequestSource interface, GitHub, demo
     pipeline-definition.ts — phases and gates, parsed from the skill
@@ -293,7 +319,7 @@ AGENTS.md                 — rules for contributors and coding agents
 
 Requirements: Node 20.9 or newer and pnpm 11.
 For real data: Claude Code with at least one session on the machine.
-`tmux` is needed only to answer, message or start a session, and the `gh` CLI only for pull-request data.
+`tmux` or Orca is needed only to answer, message or start a session, and the `gh` CLI only for pull-request data.
 
 1. Install the dependencies.
 

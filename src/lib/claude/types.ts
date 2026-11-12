@@ -1,3 +1,4 @@
+import type { TerminalRef } from "../terminal/ref";
 export type AgentStatus = "running" | "reported" | "idle";
 
 export type SessionStatus = "running" | "idle";
@@ -63,7 +64,8 @@ export interface LiveProcess {
   pid: number;
   name?: string;
   status?: string;
-  tmuxPane?: string;
+  /** The terminal the monitor can read and type into; absent in a plain terminal window. */
+  terminal?: TerminalRef;
   updatedAt?: number;
   prompt?: ScreenPrompt;
 }

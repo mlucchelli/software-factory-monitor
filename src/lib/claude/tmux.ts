@@ -1,12 +1,9 @@
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
+import { captureTerminal, sendToTerminal } from "../terminal";
+import type { KeyStep, TerminalRef } from "../terminal/ref";
 import type { ScreenPrompt, ScreenPromptOption } from "./types";
 
-const execFileAsync = promisify(execFile);
+export { captureTerminal };
 
-const KEY_DELAY_MS = 350;
-const SCREEN_LINES = 60;
-const PANE_PATTERN = /^%\d+$/;
 const FOOTER_PATTERN = /Esc to cancel|Enter to (select|confirm)/;
 const RULE_PATTERN = /^─{10,}$/;
 const OPTION_PATTERN = /^(❯\s*)?(\d+)\.\s+(?:\[([ ✔x])\]\s+)?(.*)$/;
@@ -17,36 +14,6 @@ const TABS_PREFIX = "←";
 export type KeyAction =
   | { type: "options"; numbers: number[]; advance: boolean }
   | { type: "text"; number: number; text: string };
-
-type KeyStep = { key: "Enter" | "Tab" } | { literal: string };
-
-function assertPane(pane: string) {
-  if (!PANE_PATTERN.test(pane)) {
-    throw new Error(`Invalid tmux pane ${pane}`);
-  }
-}
-
-export async function capturePane(pane: string): Promise<string> {
-  assertPane(pane);
-  const { stdout } = await execFileAsync(
-    "tmux",
-    ["capture-pane", "-p", "-t", pane, "-S", `-${SCREEN_LINES}`],
-    { timeout: 5000 },
-  );
-  return stdout.replace(/\s+$/, "");
-}
-
-async function sendSteps(pane: string, steps: KeyStep[]) {
-  assertPane(pane);
-  for (const step of steps) {
-    const args =
-      "key" in step
-        ? ["send-keys", "-t", pane, step.key]
-        : ["send-keys", "-t", pane, "-l", step.literal];
-    await execFileAsync("tmux", args, { timeout: 5000 });
-    await new Promise((resolve) => setTimeout(resolve, KEY_DELAY_MS));
-  }
-}
 
 function singleLine(text: string): string {
   return text.replace(/\s*\n\s*/g, " ").trim();
@@ -196,17 +163,17 @@ export function actionSteps(
 }
 
 export async function sendAction(
-  pane: string,
+  terminal: TerminalRef,
   prompt: ScreenPrompt,
   action: KeyAction,
 ) {
-  await sendSteps(pane, actionSteps(prompt, action));
+  await sendToTerminal(terminal, actionSteps(prompt, action));
 }
 
-export async function sendMessage(pane: string, text: string) {
+export async function sendMessage(terminal: TerminalRef, text: string) {
   const line = singleLine(text);
   if (!line) {
     throw new Error("Message is empty");
   }
-  await sendSteps(pane, [{ literal: line }, { key: "Enter" }]);
+  await sendToTerminal(terminal, [{ literal: line }, { key: "Enter" }]);
 }
