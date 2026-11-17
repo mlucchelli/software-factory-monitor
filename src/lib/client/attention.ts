@@ -236,7 +236,9 @@ export function useAttentionNotifications(items: AttentionItem[]) {
 
   useEffect(() => {
     document.title =
-      items.length > 0 ? `(${items.length}) Agents Monitor` : "Agents Monitor";
+      items.length > 0
+        ? `(${items.length}) Software Factory Monitor`
+        : "Software Factory Monitor";
   }, [items.length]);
 
   useEffect(() => {

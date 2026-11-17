@@ -1,4 +1,4 @@
-# agents-monitor
+# software-factory-monitor
 
 Local mission control for the Claude Code sessions and sub-agents running on your machine, with a team of specialist agents (the `/initiative` dev team) as a first-class view.
 

@@ -619,7 +619,7 @@ export function CrewRail({
             className="flex min-w-0 flex-1 items-center gap-2 text-sm font-semibold tracking-tight"
           >
             <Radar className="size-4 shrink-0 text-ink-secondary" aria-hidden />
-            <span className="truncate">Agents Monitor</span>
+            <span className="truncate">Software Factory Monitor</span>
           </Link>
         )}
         <button
